@@ -62,9 +62,7 @@ module.exports = {
       const changeResult = db.applyLadderWin(challengerId, defender.id);
       
       if (changeResult.rankChanged) {
-        const oldTier = getTierByRank(changeResult.challengerOldRank);
         const newTier = getTierByRank(changeResult.challengerNewRank);
-        
         summaryText = `?? **[?? ??]** <@${challengerId}>?? <@${defender.id}>?? ??? ???? **${changeResult.challengerNewRank}?**(${newTier}-TIER)?? ??????!\n` +
                       `(?? ${changeResult.challengerOldRank}? -> ${changeResult.challengerNewRank}?, ???? ? ?? ?? 1?? ??)`;
       } else {

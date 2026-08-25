@@ -32,7 +32,7 @@ module.exports = {
 
     if (existing) {
       return interaction.reply({
-        content: `? ?? ??? ?????! (?? ??: **${existing.rank}?**, ${getTierByRank(existing.rank)}??)`,
+        content: `? ?? ??? ?????! (?? ??: **${existing.rank}?**, ${getTierByRank(existing.rank)}-TIER)`,
         ephemeral: true
       });
     }
