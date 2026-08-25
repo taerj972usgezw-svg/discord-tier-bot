@@ -54,7 +54,6 @@ module.exports = {
     return row ? row.count : 0;
   },
 
-  // 신규 유저 최하위 등록
   registerUser: (id, nickname, realname, style) => {
     const maxRankRow = db.prepare('SELECT MAX(rank) as max_rank FROM users').get();
     const nextRank = (maxRankRow && maxRankRow.max_rank !== null) ? maxRankRow.max_rank + 1 : 1;
@@ -68,10 +67,8 @@ module.exports = {
     return db.prepare('SELECT * FROM users WHERE id = ?').get(id);
   },
 
-  // 관리자용: 특정 티어 또는 특정 순위로 유저 삽입 등록
   registerUserWithTier: (id, nickname, realname, style, tierNum) => {
     const runTransaction = db.transaction(() => {
-      // 티어별 시작 순위: 1티어=1등, 2티어=6등, 3티어=14등, 4티어=24등
       let targetRank = 1;
       if (tierNum === 2) targetRank = 6;
       else if (tierNum === 3) targetRank = 14;
@@ -82,7 +79,6 @@ module.exports = {
         targetRank = total + 1;
       }
 
-      // targetRank 이상의 모든 사람들을 1칸씩 뒤로(+1) 밀어냄
       db.prepare('UPDATE users SET rank = rank + 1 WHERE rank >= ?').run(targetRank);
 
       const stmt = db.prepare(
