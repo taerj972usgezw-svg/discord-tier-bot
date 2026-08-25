@@ -3,6 +3,12 @@ const fs = require('fs');
 const path = require('path');
 const config = require('./config');
 const { updateAllTierChannels } = require('./utils/tierRenderer');
+const { 
+  handleButton, 
+  handleModalSubmit, 
+  handleUserSelect, 
+  handleMatchResultButton 
+} = require('./utils/interactionHandler');
 
 const client = new Client({
   intents: [
@@ -24,11 +30,10 @@ for (const file of commandFiles) {
 }
 
 client.once(Events.ClientReady, async (c) => {
-  console.log(`=========================================`);
+  console.log('=========================================');
   console.log(`?? ???? ??? ?? ? ?? ??: ${c.user.tag}`);
-  console.log(`=========================================`);
+  console.log('=========================================');
   
-  // ? ?? ? ?? ?? ?? ??? ?? ?? ? ??
   try {
     console.log('[TierRenderer] ?? ? ?? ?? ??? ??? ?...');
     await updateAllTierChannels(c);
@@ -39,23 +44,43 @@ client.once(Events.ClientReady, async (c) => {
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
-  if (!interaction.isChatInputCommand()) return;
-
-  const command = client.commands.get(interaction.commandName);
-  if (!command) {
-    console.error(`???? ?? ? ????: ${interaction.commandName}`);
-    return;
-  }
-
   try {
-    await command.execute(interaction);
+    // 1. ??? ??? ??
+    if (interaction.isChatInputCommand()) {
+      const command = client.commands.get(interaction.commandName);
+      if (command) {
+        await command.execute(interaction);
+      }
+      return;
+    }
+
+    // 2. ?/? ?? ?? ??
+    if (interaction.isButton()) {
+      const handled = await handleMatchResultButton(interaction);
+      if (!handled) {
+        await handleButton(interaction);
+      }
+      return;
+    }
+
+    // 3. ?? ?? ?? ??
+    if (interaction.isModalSubmit()) {
+      await handleModalSubmit(interaction);
+      return;
+    }
+
+    // 4. ?? ??? ?? ??
+    if (interaction.isUserSelectMenu()) {
+      await handleUserSelect(interaction);
+      return;
+    }
   } catch (error) {
-    console.error(`[??? ?? ?? - /${interaction.commandName}]`, error);
-    const replyMsg = { content: '? ??? ?? ? ??? ??????.', ephemeral: true };
+    console.error('[Interaction Error]', error);
+    const replyMsg = { content: '? ?? ? ??? ??????.', ephemeral: true };
     if (interaction.replied || interaction.deferred) {
-      await interaction.followUp(replyMsg);
+      await interaction.followUp(replyMsg).catch(() => null);
     } else {
-      await interaction.reply(replyMsg);
+      await interaction.reply(replyMsg).catch(() => null);
     }
   }
 });
