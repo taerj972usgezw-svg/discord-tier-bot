@@ -10,18 +10,15 @@ function getTierByRank(rank) {
 }
 
 function formatUserLine(user) {
-  return `- ${user.nickname} (${user.realname}) / ${user.style}`;
+  return '- ' + user.nickname + ' (' + user.realname + ') / ' + user.style;
 }
 
 async function renderTierChannel(client, tierNumber) {
-  const channelId = config.channels[`tier${tierNumber}`];
+  const channelId = config.channels['tier' + tierNumber];
   if (!channelId) return;
 
   const channel = await client.channels.fetch(channelId).catch(() => null);
-  if (!channel) {
-    console.warn(`[TierRenderer] Tier ${tierNumber} channel (${channelId}) not found.`);
-    return;
-  }
+  if (!channel) return;
 
   const allUsers = db.getAllUsers();
   const tierConfig = config.tiers[tierNumber];
@@ -31,22 +28,22 @@ async function renderTierChannel(client, tierNumber) {
     return uTier === tierNumber;
   });
 
-  const capacityText = tierNumber === 4 ? `${tierUsers.length}?` : `${tierUsers.length}/${tierConfig.capacity}?`;
+  const capacityText = tierNumber === 4 ? tierUsers.length + '\uBA85' : tierUsers.length + '/' + tierConfig.capacity + '\uBA85';
   
   let contentList = '';
   if (tierUsers.length === 0) {
-    contentList = '*??? ??? ????.*';
+    contentList = '*\uB4F1\uB85D\uB41C \uC778\uC6D0\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.*';
   } else {
     contentList = tierUsers.map(u => {
-      return `${u.rank}? | ${formatUserLine(u)}  *(??: ${u.wins}? ${u.losses}?)*`;
+      return u.rank + '\uB4F1 | ' + formatUserLine(u) + '  *(\uC804\uC801: ' + u.wins + '\uC2B9 ' + u.losses + '\uD328)*';
     }).join('\n');
   }
 
   const embed = new EmbedBuilder()
-    .setTitle(`?? [ ${tierConfig.name} ] ??? (??: ${capacityText})`)
+    .setTitle('\uD83C\uDFC6 [ ' + tierConfig.name + ' ] \uC21C\uC704\uD45C (\uC815\uC6D0: ' + capacityText + ')')
     .setDescription(contentList)
     .setColor(tierConfig.color)
-    .setFooter({ text: `??? ??: ${new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}` });
+    .setFooter({ text: '\uB9C8\uC9C0\uB9C9 \uAC31\uC2E0: ' + new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) });
 
   const savedMsgData = db.getTierMessage(tierNumber);
   let updated = false;
@@ -58,18 +55,14 @@ async function renderTierChannel(client, tierNumber) {
         await oldMsg.edit({ embeds: [embed] });
         updated = true;
       }
-    } catch (e) {
-      console.error('Update old message failed, sending new:', e.message);
-    }
+    } catch (e) {}
   }
 
   if (!updated) {
     try {
       const newMsg = await channel.send({ embeds: [embed] });
       db.saveTierMessage(tierNumber, newMsg.id, channel.id);
-    } catch (err) {
-      console.error(`[TierRenderer] Tier ${tierNumber} send message failed:`, err.message);
-    }
+    } catch (err) {}
   }
 }
 
@@ -77,9 +70,7 @@ async function updateAllTierChannels(client) {
   for (let t = 1; t <= 4; t++) {
     try {
       await renderTierChannel(client, t);
-    } catch (err) {
-      console.error(`Tier ${t} render error:`, err.message);
-    }
+    } catch (err) {}
   }
 }
 
