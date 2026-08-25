@@ -5,16 +5,16 @@ const { getTierByRank, updateAllTierChannels } = require('../utils/tierRenderer'
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName('????')
+    .setName('result')
     .setDescription('?? ?? ??? ?????.')
     .addUserOption(opt =>
-      opt.setName('???')
-        .setDescription('???? ?? ??? ?????')
+      opt.setName('opponent')
+        .setDescription('?? ?? ??')
         .setRequired(true)
     )
     .addStringOption(opt =>
-      opt.setName('?_??')
-        .setDescription('?? ??/?? ??? ?????')
+      opt.setName('outcome')
+        .setDescription('?? ?? ??')
         .setRequired(true)
         .addChoices(
           { name: '?? (?? ??)', value: 'win' },
@@ -24,8 +24,8 @@ module.exports = {
 
   async execute(interaction) {
     const challengerId = interaction.user.id;
-    const defenderUser = interaction.options.getUser('???');
-    const result = interaction.options.getString('?_??');
+    const defenderUser = interaction.options.getUser('opponent');
+    const result = interaction.options.getString('outcome');
 
     if (challengerId === defenderUser.id) {
       return interaction.reply({ content: '? ?? ???? ??? ??? ? ????.', ephemeral: true });
@@ -35,19 +35,16 @@ module.exports = {
     const defender = db.getUserById(defenderUser.id);
 
     if (!challenger) {
-      return interaction.reply({ content: '? ?? `/??` ???? ???? ??????.', ephemeral: true });
+      return interaction.reply({ content: '? ?? `/register` ???? ???? ??????.', ephemeral: true });
     }
     if (!defender) {
       return interaction.reply({ content: `? ???(${defenderUser.username})? ???? ???? ?? ????.`, ephemeral: true });
     }
 
-    // ?? ?? ?? ??: ???? ?? 3? ???
     const cRank = challenger.rank;
     const dRank = defender.rank;
 
-    if (cRank < dRank) {
-      // ??? ???? ??? ?? ?? (??? ?? ?? ??)
-    } else {
+    if (cRank > dRank) {
       const rankDiff = cRank - dRank;
       if (rankDiff > config.maxChallengeAbove) {
         return interaction.reply({
@@ -62,7 +59,6 @@ module.exports = {
     const logEmbed = new EmbedBuilder().setTimestamp();
 
     if (result === 'win') {
-      // ??? ??
       const changeResult = db.applyLadderWin(challengerId, defender.id);
       
       if (changeResult.rankChanged) {
@@ -79,7 +75,6 @@ module.exports = {
         .setDescription(summaryText)
         .setColor(0x2ECC71);
     } else {
-      // ??? ??
       db.applyLadderLoss(challengerId, defender.id, challengerId);
       summaryText = `??? **[?? ??]** <@${challengerId}>?? <@${defender.id}>??? ???????. (?? ?? ??)`;
       
@@ -88,10 +83,8 @@ module.exports = {
         .setColor(0xE74C3C);
     }
 
-    // ?? ??? ?? ?? ??
     await updateAllTierChannels(interaction.client);
 
-    // ??? ?? ??? ?? ?? (??? ??)
     if (config.channels.log) {
       const logChannel = await interaction.client.channels.fetch(config.channels.log).catch(() => null);
       if (logChannel) {

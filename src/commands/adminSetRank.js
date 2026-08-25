@@ -5,16 +5,16 @@ const { updateAllTierChannels } = require('../utils/tierRenderer');
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName('????')
+    .setName('setrank')
     .setDescription('[???] ?? ??? ??? ??? ?????.')
     .addUserOption(opt =>
-      opt.setName('??')
-        .setDescription('??? ??? ??')
+      opt.setName('user')
+        .setDescription('??? ??? ?? ??')
         .setRequired(true)
     )
     .addIntegerOption(opt =>
-      opt.setName('???')
-        .setDescription('??? ?? ?? ?? (1??)')
+      opt.setName('rank')
+        .setDescription('?? ??? ?? ?? (1??)')
         .setRequired(true)
     ),
 
@@ -23,8 +23,8 @@ module.exports = {
       return interaction.reply({ content: '? ???? ??? ? ?? ??????.', ephemeral: true });
     }
 
-    const targetUser = interaction.options.getUser('??');
-    const newRank = interaction.options.getInteger('???');
+    const targetUser = interaction.options.getUser('user');
+    const newRank = interaction.options.getInteger('rank');
 
     const user = db.getUserById(targetUser.id);
     if (!user) {

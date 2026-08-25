@@ -5,25 +5,25 @@ const { updateAllTierChannels } = require('../utils/tierRenderer');
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName('????')
+    .setName('edituser')
     .setDescription('[???] ??? ???, ??, ???(??/??)? ?????.')
     .addUserOption(opt =>
-      opt.setName('??')
-        .setDescription('??? ??')
+      opt.setName('user')
+        .setDescription('??? ?? ??')
         .setRequired(true)
     )
     .addStringOption(opt =>
-      opt.setName('???')
-        .setDescription('??? ??? (?? ? ??? ????)')
+      opt.setName('nickname')
+        .setDescription('??? ??? (??? ? ????)')
         .setRequired(false)
     )
     .addStringOption(opt =>
-      opt.setName('??_??')
-        .setDescription('??? ??/?? (?? ? ??? ????)')
+      opt.setName('realname')
+        .setDescription('??? ??/?? (??? ? ????)')
         .setRequired(false)
     )
     .addStringOption(opt =>
-      opt.setName('??_???')
+      opt.setName('style')
         .setDescription('?? ?? ??')
         .setRequired(false)
         .addChoices(
@@ -37,22 +37,21 @@ module.exports = {
       return interaction.reply({ content: '? ???? ??? ? ?? ??????.', ephemeral: true });
     }
 
-    const targetUser = interaction.options.getUser('??');
+    const targetUser = interaction.options.getUser('user');
     const user = db.getUserById(targetUser.id);
     if (!user) {
       return interaction.reply({ content: '? ???? ?? ?????.', ephemeral: true });
     }
 
-    const nickname = interaction.options.getString('???');
-    const realname = interaction.options.getString('??_??');
-    const style = interaction.options.getString('??_???');
+    const nickname = interaction.options.getString('nickname');
+    const realname = interaction.options.getString('realname');
+    const style = interaction.options.getString('style');
 
     const updated = db.updateUserInfo(targetUser.id, nickname, realname, style);
     await updateAllTierChannels(interaction.client);
 
     await interaction.reply({
-      content: `? <@${targetUser.id}>?? ??? ???????:
-- ${updated.nickname} (${updated.realname}) / ${updated.style}`
+      content: `? <@${targetUser.id}>?? ??? ???????:\n- ${updated.nickname} (${updated.realname}) / ${updated.style}`
     });
   }
 };

@@ -4,21 +4,21 @@ const { getTierByRank, updateAllTierChannels } = require('../utils/tierRenderer'
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName('??')
-    .setDescription('???? ?? ??? ?????. (?? ??? ??? ?????)')
+    .setName('register')
+    .setDescription('???? ?? ??? ?????. (??? ?? ??)')
     .addStringOption(opt =>
-      opt.setName('???')
+      opt.setName('nickname')
         .setDescription('???? ?? ?? ???')
         .setRequired(true)
     )
     .addStringOption(opt =>
-      opt.setName('??_??')
+      opt.setName('realname')
         .setDescription('?? ?? ?? (?: ???)')
         .setRequired(true)
     )
     .addStringOption(opt =>
-      opt.setName('??_???')
-        .setDescription('?? ?? ??? ?????')
+      opt.setName('style')
+        .setDescription('?? ?? ?? ??')
         .setRequired(true)
         .addChoices(
           { name: '??', value: '??' },
@@ -37,14 +37,13 @@ module.exports = {
       });
     }
 
-    const nickname = interaction.options.getString('???').trim();
-    const realname = interaction.options.getString('??_??').trim();
-    const style = interaction.options.getString('??_???');
+    const nickname = interaction.options.getString('nickname').trim();
+    const realname = interaction.options.getString('realname').trim();
+    const style = interaction.options.getString('style');
 
     const newUser = db.registerUser(userId, nickname, realname, style);
     const tier = getTierByRank(newUser.rank);
 
-    // ?? ??? ?? ??
     await updateAllTierChannels(interaction.client);
 
     const embed = new EmbedBuilder()
