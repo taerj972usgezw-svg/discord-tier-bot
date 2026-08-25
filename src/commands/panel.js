@@ -22,7 +22,7 @@ function createPanelComponents() {
   const row1 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId('btn_register')
-      .setLabel('\uD83D\uDCDD \uCC38\uAC00 \uB4F1\uB85D')
+      .setLabel('\uD83D\uDCDD \uCC38\uAC00 \uB4F1\uB85D / \uC815\uBCF4 \uC218\uC815')
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
       .setCustomId('btn_match')
@@ -34,7 +34,18 @@ function createPanelComponents() {
       .setStyle(ButtonStyle.Secondary)
   );
 
-  return { embeds: [embed], components: [row1] };
+  const row2 = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('btn_admin_add_user')
+      .setLabel('\uD83D\uDC51 [\uAD00\uB9AC\uC790] \uC720\uC800 \uCD94\uAC00 (\uD2F0\uC5B4 \uC9C0\uC815)')
+      .setStyle(ButtonStyle.Danger),
+    new ButtonBuilder()
+      .setCustomId('btn_admin_refresh')
+      .setLabel('\uD83D\uDD04 \uC21C\uC704\uD45C \uAC31\uC2E0')
+      .setStyle(ButtonStyle.Secondary)
+  );
+
+  return { embeds: [embed], components: [row1, row2] };
 }
 
 module.exports = {

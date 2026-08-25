@@ -5,27 +5,24 @@ const {
 const db = require('../database');
 const config = require('../config');
 const { getTierByRank, updateAllTierChannels } = require('./tierRenderer');
+const { checkAdmin } = require('./adminCheck');
 
 async function handleButton(interaction) {
   const customId = interaction.customId;
 
+  // 1. 일반 유저 등록 / 수정 버튼
   if (customId === 'btn_register') {
     const existing = db.getUserById(interaction.user.id);
-    if (existing) {
-      return interaction.reply({
-        content: '\u274C \uC774\uBBF8 \uB4F1\uB85D\uB418\uC5B4 \uC788\uC2B5\uB2C8\uB2E4! (\uD604\uC7AC \uC21C\uC704: **' + existing.rank + '\uB4F1**, ' + getTierByRank(existing.rank) + '-TIER)',
-        ephemeral: true
-      });
-    }
 
     const modal = new ModalBuilder()
       .setCustomId('modal_register')
-      .setTitle('\uD83D\uDCDD \uC21C\uC704\uD45C \uCC38\uAC00 \uB4F1\uB85D');
+      .setTitle(existing ? '\u270F\uFE0F \uB0B4 \uC815\uBCF4 \uC218\uC815' : '\uD83D\uDCDD \uC21C\uC704\uD45C \uCC38\uAC00 \uB4F1\uB85D');
 
     const nickInput = new TextInputBuilder()
       .setCustomId('input_nickname')
       .setLabel('\uB2C9\uB124\uC784 (\uB514\uC2A4\uCF54\uB4DC \uB610\uB294 \uAC8C\uC784 \uB2C9\uB124\uC784)')
       .setStyle(TextInputStyle.Short)
+      .setValue(existing ? existing.nickname : '')
       .setPlaceholder('\uC608: \uD64D\uAE38\uB3D9')
       .setRequired(true);
 
@@ -33,13 +30,15 @@ async function handleButton(interaction) {
       .setCustomId('input_realname')
       .setLabel('\uBCF8\uBA85 \uB610\uB294 \uBCC4\uBA85')
       .setStyle(TextInputStyle.Short)
+      .setValue(existing ? existing.realname : '')
       .setPlaceholder('\uC608: \uAE38\uB3D9\uC774')
       .setRequired(true);
 
     const styleInput = new TextInputBuilder()
       .setCustomId('input_style')
-      .setLabel('\uC885\uC871 / \uC2A4\uD0C0\uC77C (\uD55C\uB460 \uB610\uB294 \uC678\uB460 \uC785\uB825)')
+      .setLabel('\uC885\uC871 / \uC2A4\uD0C0\uC77C (\uD55C\uB460 \uB610\uB294 \uC678\uB460)')
       .setStyle(TextInputStyle.Short)
+      .setValue(existing ? existing.style : '')
       .setPlaceholder('\uD55C\uB460 \uB610\uB294 \uC678\uB460')
       .setMinLength(2)
       .setMaxLength(2)
@@ -52,13 +51,79 @@ async function handleButton(interaction) {
     );
 
     await interaction.showModal(modal);
-  } else if (customId === 'btn_match') {
+  }
+
+  // 2. 관리자 유저 직접 추가 (티어 지정 가능 & 무제한 연속 추가)
+  else if (customId === 'btn_admin_add_user') {
+    const isOwner = interaction.guild?.ownerId === interaction.user.id;
+    if (!checkAdmin(interaction.member) && !isOwner) {
+      return interaction.reply({ content: '\u274C \uAD00\uB9AC\uC790\uB9CC \uC0AC\uC6A9\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.', ephemeral: true });
+    }
+
+    const modal = new ModalBuilder()
+      .setCustomId('modal_admin_add_user')
+      .setTitle('\uD83D\uDC51 [\uAD00\uB9AC\uC790] \uC720\uC800 \uCD94\uAC00 (\uD2F0\uC5B4 \uC9C0\uC815)');
+
+    const nickInput = new TextInputBuilder()
+      .setCustomId('admin_input_nickname')
+      .setLabel('\uB2C9\uB124\uC784')
+      .setStyle(TextInputStyle.Short)
+      .setPlaceholder('\uC608: \uD64D\uAE38\uB3D9')
+      .setRequired(true);
+
+    const realInput = new TextInputBuilder()
+      .setCustomId('admin_input_realname')
+      .setLabel('\uBCF8\uBA85 \uB610\uB294 \uBCC4\uBA85')
+      .setStyle(TextInputStyle.Short)
+      .setPlaceholder('\uC608: \uAE38\uB3D9\uC774')
+      .setRequired(true);
+
+    const styleInput = new TextInputBuilder()
+      .setCustomId('admin_input_style')
+      .setLabel('\uC885\uC871 / \uC2A4\uD0C0\uC77C (\uD55C\uB460 \uB610\uB294 \uC678\uB460)')
+      .setStyle(TextInputStyle.Short)
+      .setPlaceholder('\uD55C\uB460 \uB610\uB294 \uC678\uB460')
+      .setRequired(true);
+
+    const tierInput = new TextInputBuilder()
+      .setCustomId('admin_input_tier')
+      .setLabel('\uBC30\uC815\uD560 \uD2F0\uC5B4 \uBC88\uD638 (1, 2, 3, 4 \uC911 \uC785\uB825)')
+      .setStyle(TextInputStyle.Short)
+      .setPlaceholder('1 (1티어), 2 (2티어), 3 (3티어), 4 (4티어)')
+      .setValue('1')
+      .setMinLength(1)
+      .setMaxLength(1)
+      .setRequired(true);
+
+    modal.addComponents(
+      new ActionRowBuilder().addComponents(nickInput),
+      new ActionRowBuilder().addComponents(realInput),
+      new ActionRowBuilder().addComponents(styleInput),
+      new ActionRowBuilder().addComponents(tierInput)
+    );
+
+    await interaction.showModal(modal);
+  }
+
+  // 3. 순위표 강제 새로고침 버튼
+  else if (customId === 'btn_admin_refresh') {
+    await updateAllTierChannels(interaction.client);
+    await interaction.reply({ content: '\u2705 \uBAA8\uB4E0 \uD2F0\uC5B4 \uCC44\uB110\uC758 \uC21C\uC704\uD45C\uAC00 \uC131\uACF5\uC801\uC73C\uB85C \uAC31\uC2E0\uB418\uC5C8\uC2B5\uB2C8\uB2E4!', ephemeral: true });
+  }
+
+  // 4. 경기 결과 신고 버튼
+  else if (customId === 'btn_match') {
     const user = db.getUserById(interaction.user.id);
     if (!user) {
       return interaction.reply({
         content: '\u274C \uBA3C\uC800 [ \uD83D\uDCDD \uCC38\uAC00 \uB4F1\uB85D ] \uBC84\uD2BC\uC744 \uB20C\uB7EC \uB4F1\uB85D\uD574\uC8FC\uC138\uC694.',
         ephemeral: true
       });
+    }
+
+    const allUsers = db.getAllUsers().filter(u => u.id !== interaction.user.id);
+    if (allUsers.length === 0) {
+      return interaction.reply({ content: '\u274C \uB3C4\uC804\uD560 \uB2E4\uB978 \uC720\uC800\uAC00 \uC544\uC9C1 \uB4F1\uB85D\uB418\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4.', ephemeral: true });
     }
 
     const userSelect = new UserSelectMenuBuilder()
@@ -74,7 +139,10 @@ async function handleButton(interaction) {
       components: [row],
       ephemeral: true
     });
-  } else if (customId === 'btn_profile') {
+  }
+
+  // 5. 내 정보 조회 버튼
+  else if (customId === 'btn_profile') {
     const user = db.getUserById(interaction.user.id);
     if (!user) {
       return interaction.reply({
@@ -92,7 +160,7 @@ async function handleButton(interaction) {
     for (let r = Math.max(1, user.rank - config.maxChallengeAbove); r < user.rank; r++) {
       const rival = db.getUserByRank(r);
       if (rival) {
-        canChallenge.push('\u2022 **' + rival.rank + '\uB4F1** : ' + rival.nickname + ' (' + rival.realname + ') / ' + rival.style);
+        canChallenge.push('• **' + rival.rank + '\uB4F1** : ' + rival.nickname + ' (' + rival.realname + ') / ' + rival.style);
       }
     }
 
@@ -116,6 +184,7 @@ async function handleButton(interaction) {
 }
 
 async function handleModalSubmit(interaction) {
+  // 일반 유저 셀프 등록 / 정보 수정
   if (interaction.customId === 'modal_register') {
     const nickname = interaction.fields.getTextInputValue('input_nickname').trim();
     const realname = interaction.fields.getTextInputValue('input_realname').trim();
@@ -125,19 +194,56 @@ async function handleModalSubmit(interaction) {
       style = style.includes('\uC678') ? '\uC678\uB460' : '\uD55C\uB460';
     }
 
-    const newUser = db.registerUser(interaction.user.id, nickname, realname, style);
-    const tier = getTierByRank(newUser.rank);
+    const existing = db.getUserById(interaction.user.id);
+    let user;
+    if (existing) {
+      user = db.updateUserInfo(interaction.user.id, nickname, realname, style);
+    } else {
+      user = db.registerUser(interaction.user.id, nickname, realname, style);
+    }
+    const tier = getTierByRank(user.rank);
 
     await updateAllTierChannels(interaction.client);
 
     const embed = new EmbedBuilder()
-      .setTitle('\uD83C\uDF89 \uC21C\uC704\uD45C \uB4F1\uB85D \uC644\uB8CC!')
-      .setDescription('**' + newUser.nickname + '**\uB2D8\uC774 \uC21C\uC704\uD45C\uC5D0 \uC131\uACF5\uC801\uC73C\uB85C \uB4F1\uB85D\uB418\uC5C8\uC2B5\uB2C8\uB2E4.')
+      .setTitle(existing ? '\u2705 \uC815\uBCF4 \uC218\uC815 \uC644\uB8CC!' : '\uD83C\uDF89 \uC21C\uC704\uD45C \uB4F1\uB85D \uC644\uB8CC!')
+      .setDescription('**' + user.nickname + '**\uB2D8\uC758 \uC815\uBCF4\uAC00 \uC801\uC6A9\uB418\uC5C8\uC2B5\uB2C8\uB2E4.')
       .addFields(
-        { name: '\uD45C\uC2DC \uD615\uC2DD', value: '- ' + newUser.nickname + ' (' + newUser.realname + ') / ' + newUser.style },
-        { name: '\uBC30\uC815 \uC21C\uC704', value: '**' + newUser.rank + '\uB4F1** (' + tier + '-TIER)', inline: true }
+        { name: '\uD45C\uC2DC \uD615\uC2DD', value: '- ' + user.nickname + ' (' + user.realname + ') / ' + user.style },
+        { name: '\uBC30\uC815 \uC21C\uC704', value: '**' + user.rank + '\uB4F1** (' + tier + '-TIER)', inline: true }
       )
       .setColor(0x2ECC71);
+
+    await interaction.reply({ embeds: [embed], ephemeral: true });
+  }
+
+  // 관리자 유저 추가 (티어 지정)
+  else if (interaction.customId === 'modal_admin_add_user') {
+    const nickname = interaction.fields.getTextInputValue('admin_input_nickname').trim();
+    const realname = interaction.fields.getTextInputValue('admin_input_realname').trim();
+    let style = interaction.fields.getTextInputValue('admin_input_style').trim();
+    const tierStr = interaction.fields.getTextInputValue('admin_input_tier').trim();
+    const tierNum = parseInt(tierStr, 10) || 1;
+
+    if (style !== '\uD55C\uB460' && style !== '\uC678\uB460') {
+      style = style.includes('\uC678') ? '\uC678\uB460' : '\uD55C\uB460';
+    }
+
+    // 고유 ID 생성 (디스코드 유저가 아니어도 관리자가 대신 등록할 수 있도록)
+    const fakeId = 'user_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+    const newUser = db.registerUserWithTier(fakeId, nickname, realname, style, tierNum);
+    const actualTier = getTierByRank(newUser.rank);
+
+    await updateAllTierChannels(interaction.client);
+
+    const embed = new EmbedBuilder()
+      .setTitle('\uD83D\uDC51 [\uAD00\uB9AC\uC790] \uC720\uC800 \uCD94\uAC00 \uC644\uB8CC!')
+      .setDescription('**' + newUser.nickname + '** (' + newUser.realname + ')\uB2D8\uC774 **' + actualTier + '-TIER** (' + newUser.rank + '\uB4F1)\uC5D0 \uCD94\uAC00\uB418\uC5C8\uC2B5\uB2C8\uB2E4.')
+      .addFields(
+        { name: '\uD45C\uC2DC \uD615\uC2DD', value: '- ' + newUser.nickname + ' (' + newUser.realname + ') / ' + newUser.style },
+        { name: '\uBC30\uC815 \uC21C\uC704', value: '**' + newUser.rank + '\uB4F1** (' + actualTier + '-TIER)', inline: true }
+      )
+      .setColor(0x3498DB);
 
     await interaction.reply({ embeds: [embed], ephemeral: true });
   }
@@ -227,7 +333,7 @@ async function handleMatchResultButton(interaction) {
       summaryText = '\u2705 <@' + challengerId + '>\uB2D8\uC774 \uC2B9\uB9AC\uD588\uC2B5\uB2C8\uB2E4. (\uC21C\uC704 \uBCC0\uB3D9 \uC5C6\uC74C)';
     }
 
-    logEmbed.setTitle('\u2694\uFE0F \uACBD\uAE30 \uACB0\uACFC \uC2E0\uACE0 (\uC2B9\uB9AC)')
+    logEmbed.setTitle('\u2694\uFE0F \uACBD\uAE30 \uACB0\uACFC \uC2E0\uACE0 (승\uB9AC)')
       .setDescription(summaryText)
       .setColor(0x2ECC71);
   } else {
