@@ -2,7 +2,6 @@ const { EmbedBuilder } = require('discord.js');
 const db = require('../database');
 const config = require('../config');
 
-// ??(1~N)? ?? ?? ??
 function getTierByRank(rank) {
   if (rank >= 1 && rank <= 5) return 1;
   if (rank >= 6 && rank <= 13) return 2;
@@ -10,9 +9,7 @@ function getTierByRank(rank) {
   return 4;
 }
 
-// ? ?? ??? ??? ??? ???
 function formatUserLine(user) {
-  // ???? ??? ?? ??: - ??? (??/??) / ?? or ??
   return `- ${user.nickname} (${user.realname}) / ${user.style}`;
 }
 
@@ -29,7 +26,6 @@ async function renderTierChannel(client, tierNumber) {
   const allUsers = db.getAllUsers();
   const tierConfig = config.tiers[tierNumber];
 
-  // ?? ?? ??? ?? ???
   const tierUsers = allUsers.filter(u => {
     const uTier = getTierByRank(u.rank);
     return uTier === tierNumber;
@@ -52,7 +48,6 @@ async function renderTierChannel(client, tierNumber) {
     .setColor(tierConfig.color)
     .setFooter({ text: `??? ??: ${new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}` });
 
-  // ?? ? ???? ???? ??? ??(Edit), ??? ?? ??
   const savedMsgData = db.getTierMessage(tierNumber);
   let updated = false;
 
@@ -64,23 +59,26 @@ async function renderTierChannel(client, tierNumber) {
         updated = true;
       }
     } catch (e) {
-      console.error(`?? ??? ?? ?? (?? ?????):`, e);
+      console.error('?? ??? ?? ?? (?? ?????):', e.message);
     }
   }
 
   if (!updated) {
-    const newMsg = await channel.send({ embeds: [embed] });
-    db.saveTierMessage(tierNumber, newMsg.id, channel.id);
+    try {
+      const newMsg = await channel.send({ embeds: [embed] });
+      db.saveTierMessage(tierNumber, newMsg.id, channel.id);
+    } catch (err) {
+      console.error(`[TierRenderer] ${tierNumber}?? ??? ??? ?? ??:`, err.message);
+    }
   }
 }
 
-// 4? ?? ?? ?? ?? ??
 async function updateAllTierChannels(client) {
   for (let t = 1; t <= 4; t++) {
     try {
       await renderTierChannel(client, t);
     } catch (err) {
-      console.error(`?? ${t} ??? ? ?? ??:`, err);
+      console.error(`?? ${t} ??? ? ?? ??:`, err.message);
     }
   }
 }

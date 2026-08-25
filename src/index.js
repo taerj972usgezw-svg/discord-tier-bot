@@ -34,7 +34,6 @@ for (const file of commandFiles) {
   }
 }
 
-// ? ?? ? ??? ??? ?? ??
 async function registerSlashCommands() {
   if (!config.token || !config.clientId) {
     console.warn('[Slash Commands] TOKEN ?? CLIENT_ID? ?? ?? ??? ?????.');
@@ -67,10 +66,8 @@ client.once(Events.ClientReady, async (c) => {
   console.log(`?? ???? ??? ?? ? ?? ??: ${c.user.tag}`);
   console.log('=========================================');
   
-  // 1. ??? ??? ?? ??
   await registerSlashCommands();
 
-  // 2. ?? ?? ??? ???/??
   try {
     console.log('[TierRenderer] ?? ? ?? ?? ??? ??? ?...');
     await updateAllTierChannels(c);
@@ -80,12 +77,11 @@ client.once(Events.ClientReady, async (c) => {
   }
 });
 
-// ?? ??? ??? ?? (!??, !panel)
 client.on(Events.MessageCreate, async (message) => {
   if (message.author.bot) return;
 
   const content = message.content.trim();
-  if (content === '!??' || content === '!panel' || content === '!????') {
+  if (content === '!??' || content === '!panel' || content === '!????' || content === '!p') {
     const isOwner = message.guild?.ownerId === message.author.id;
     if (!checkAdmin(message.member) && !isOwner) {
       return message.reply('? ?? ???? ??? ??? ? ????.');
@@ -94,7 +90,7 @@ client.on(Events.MessageCreate, async (message) => {
     try {
       const panelData = createPanelComponents();
       await message.channel.send(panelData);
-      await message.delete().catch(() => null); // ?? !?? ??? ??? ??
+      await message.delete().catch(() => null);
     } catch (err) {
       console.error('[Panel Send Error]', err);
       message.reply('? ?? ?? ? ??? ??????. ?? ?? ???/??? ?? ??? ??????.');
@@ -102,10 +98,8 @@ client.on(Events.MessageCreate, async (message) => {
   }
 });
 
-// ?? ????(??? ???, ??, ??, ??? ??) ???
 client.on(Events.InteractionCreate, async (interaction) => {
   try {
-    // 1. ??? ???
     if (interaction.isChatInputCommand()) {
       const command = client.commands.get(interaction.commandName);
       if (command) {
@@ -114,7 +108,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
 
-    // 2. ?/? ?? ?? ?? ??
     if (interaction.isButton()) {
       const handled = await handleMatchResultButton(interaction);
       if (!handled) {
@@ -123,13 +116,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
 
-    // 3. ?? ?? ??
     if (interaction.isModalSubmit()) {
       await handleModalSubmit(interaction);
       return;
     }
 
-    // 4. ?? ??? ??
     if (interaction.isUserSelectMenu()) {
       await handleUserSelect(interaction);
       return;

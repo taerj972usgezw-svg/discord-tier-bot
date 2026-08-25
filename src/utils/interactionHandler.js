@@ -1,7 +1,6 @@
 const { 
   ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, 
-  EmbedBuilder, UserSelectMenuBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder,
-  ButtonStyle, ButtonBuilder 
+  EmbedBuilder, UserSelectMenuBuilder, ButtonStyle, ButtonBuilder 
 } = require('discord.js');
 const db = require('../database');
 const config = require('../config');
@@ -10,7 +9,6 @@ const { getTierByRank, updateAllTierChannels } = require('./tierRenderer');
 async function handleButton(interaction) {
   const customId = interaction.customId;
 
-  // 1. ?? ?? ?? -> ?? ? ???
   if (customId === 'btn_register') {
     const existing = db.getUserById(interaction.user.id);
     if (existing) {
@@ -42,7 +40,7 @@ async function handleButton(interaction) {
       .setCustomId('input_style')
       .setLabel('?? / ??? (?? ?? ?? ??)')
       .setStyle(TextInputStyle.Short)
-      .setPlaceholder('?? ?? ?? ??')
+      .setPlaceholder('?? ?? ??')
       .setMinLength(2)
       .setMaxLength(2)
       .setRequired(true);
@@ -54,10 +52,7 @@ async function handleButton(interaction) {
     );
 
     await interaction.showModal(modal);
-  }
-
-  // 2. ?? ?? ?? ?? -> ??? ?? ?? ??? (Ephemeral)
-  else if (customId === 'btn_match') {
+  } else if (customId === 'btn_match') {
     const user = db.getUserById(interaction.user.id);
     if (!user) {
       return interaction.reply({
@@ -79,10 +74,7 @@ async function handleButton(interaction) {
       components: [row],
       ephemeral: true
     });
-  }
-
-  // 3. ? ?? ?? ?? -> ?? ??? ??
-  else if (customId === 'btn_profile') {
+  } else if (customId === 'btn_profile') {
     const user = db.getUserById(interaction.user.id);
     if (!user) {
       return interaction.reply({
@@ -173,7 +165,6 @@ async function handleUserSelect(interaction) {
       });
     }
 
-    // ?? ?? ??
     const cRank = challenger.rank;
     const dRank = defender.rank;
 
@@ -188,7 +179,6 @@ async function handleUserSelect(interaction) {
       }
     }
 
-    // ??/?? ?? ?? ? ??
     const resultRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId(`btn_submit_win_${defenderId}`)
