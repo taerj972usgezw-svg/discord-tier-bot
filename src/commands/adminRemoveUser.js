@@ -6,16 +6,16 @@ const { updateAllTierChannels } = require('../utils/tierRenderer');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('removeuser')
-    .setDescription('[???] ????? ??? ?????. (?? ?? ?? 1? ??)')
+    .setDescription('[관리자] 순위표에서 유저를 삭제합니다. (하위 랭크 자동 1씩 당김)')
     .addUserOption(opt =>
       opt.setName('user')
-        .setDescription('??? ?? ??')
+        .setDescription('삭제할 대상 유저')
         .setRequired(true)
     ),
 
   async execute(interaction) {
     if (!checkAdmin(interaction.member)) {
-      return interaction.reply({ content: '? ???? ??? ? ?? ??????.', ephemeral: true });
+      return interaction.reply({ content: '❌ 관리자만 사용할 수 있는 명령어입니다.', ephemeral: true });
     }
 
     const targetUser = interaction.options.getUser('user');
@@ -24,10 +24,10 @@ module.exports = {
       await updateAllTierChannels(interaction.client);
 
       await interaction.reply({
-        content: `??? **${removed.nickname}** (${removed.realname}) ??? ????? ???????.`
+        content: '🗑️ **' + removed.nickname + '** (' + removed.realname + ') 유저가 순위표에서 삭제되었습니다.'
       });
     } catch (err) {
-      await interaction.reply({ content: `? ?? ?? ??: ${err.message}`, ephemeral: true });
+      await interaction.reply({ content: '❌ 유저 삭제 실패: ' + err.message, ephemeral: true });
     }
   }
 };

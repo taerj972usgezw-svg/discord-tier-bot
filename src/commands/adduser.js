@@ -63,10 +63,10 @@ module.exports = {
 
     const embed = new EmbedBuilder()
       .setTitle('👑 [관리자] 유저 추가 완료!')
-      .setDescription(**** ()님이 **-TIER** (등)에 추가되었습니다.)
+      .setDescription('**' + newUser.nickname + '** (' + newUser.realname + ')님이 **' + actualTier + '-TIER** (' + newUser.rank + '등)에 추가되었습니다.')
       .addFields(
-        { name: '표시 형식', value: -  () /  },
-        { name: '배정 순위', value: **등** (-TIER), inline: true }
+        { name: '표시 형식', value: '- ' + newUser.nickname + ' (' + newUser.realname + ') / ' + newUser.style },
+        { name: '배정 순위', value: '**' + newUser.rank + '등** (' + actualTier + '-TIER)', inline: true }
       )
       .setColor(0x3498DB);
 

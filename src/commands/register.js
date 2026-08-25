@@ -5,24 +5,24 @@ const { getTierByRank, updateAllTierChannels } = require('../utils/tierRenderer'
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('register')
-    .setDescription('???? ?? ??? ?????. (??? ?? ??)')
+    .setDescription('순위표에 참가 등록합니다.')
     .addStringOption(opt =>
       opt.setName('nickname')
-        .setDescription('???? ?? ?? ???')
+        .setDescription('디스코드 또는 게임 닉네임')
         .setRequired(true)
     )
     .addStringOption(opt =>
       opt.setName('realname')
-        .setDescription('?? ?? ?? (?: ???)')
+        .setDescription('본명 또는 별명 (예: 홍길동)')
         .setRequired(true)
     )
     .addStringOption(opt =>
       opt.setName('style')
-        .setDescription('?? ?? ?? ??')
+        .setDescription('한둠 또는 외둠 선택')
         .setRequired(true)
         .addChoices(
-          { name: '??', value: '??' },
-          { name: '??', value: '??' }
+          { name: '한둠', value: '한둠' },
+          { name: '외둠', value: '외둠' }
         )
     ),
 
@@ -32,7 +32,7 @@ module.exports = {
 
     if (existing) {
       return interaction.reply({
-        content: `? ?? ??? ?????! (?? ??: **${existing.rank}?**, ${getTierByRank(existing.rank)}-TIER)`,
+        content: '❌ 이미 등록된 유저입니다! (현재 순위: **' + existing.rank + '등**, ' + getTierByRank(existing.rank) + '-TIER)',
         ephemeral: true
       });
     }
@@ -47,11 +47,11 @@ module.exports = {
     await updateAllTierChannels(interaction.client);
 
     const embed = new EmbedBuilder()
-      .setTitle('?? ??? ?? ??!')
-      .setDescription(`**${newUser.nickname}**?? ???? ???????.`)
+      .setTitle('🎉 순위표 등록 완료!')
+      .setDescription('**' + newUser.nickname + '**님이 순위표에 등록되었습니다.')
       .addFields(
-        { name: '?? ??', value: `- ${newUser.nickname} (${newUser.realname}) / ${newUser.style}` },
-        { name: '?? ??', value: `**${newUser.rank}?** (${tier}-TIER)`, inline: true }
+        { name: '표시 형식', value: '- ' + newUser.nickname + ' (' + newUser.realname + ') / ' + newUser.style },
+        { name: '배정 순위', value: '**' + newUser.rank + '등** (' + tier + '-TIER)', inline: true }
       )
       .setColor(0x2ECC71);
 

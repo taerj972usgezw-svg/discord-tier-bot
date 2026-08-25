@@ -77,15 +77,15 @@ client.once(Events.ClientReady, async (c) => {
   }
 });
 
-// ?? ??? ??? ??? (!panel, !p, !??, !??)
+// 채팅 명령어 지원 (!panel, !p, !패널, !순위, !rank)
 client.on(Events.MessageCreate, async (message) => {
   if (message.author.bot) return;
 
   const content = message.content.trim().toLowerCase();
-  if (content === '!panel' || content === '!p' || content === '!??' || content === '!??' || content === '!rank') {
+  if (content === '!panel' || content === '!p' || content === '!패널' || content === '!순위' || content === '!rank') {
     const isOwner = message.guild?.ownerId === message.author.id;
     if (!checkAdmin(message.member) && !isOwner) {
-      return message.reply('\u274C \uAD00\uB9AC\uC790\uB9CC \uD328\uB110\uC744 \uC0DD\uC131\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4. (Admin only)');
+      return message.reply('❌ 관리자만 패널을 생성할 수 있습니다. (Admin only)');
     }
 
     try {
