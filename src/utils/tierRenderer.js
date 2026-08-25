@@ -19,7 +19,7 @@ async function renderTierChannel(client, tierNumber) {
 
   const channel = await client.channels.fetch(channelId).catch(() => null);
   if (!channel) {
-    console.warn(`[TierRenderer] ${tierNumber}?? ??(${channelId})? ?? ? ????.`);
+    console.warn(`[TierRenderer] Tier ${tierNumber} channel (${channelId}) not found.`);
     return;
   }
 
@@ -59,7 +59,7 @@ async function renderTierChannel(client, tierNumber) {
         updated = true;
       }
     } catch (e) {
-      console.error('?? ??? ?? ?? (?? ?????):', e.message);
+      console.error('Update old message failed, sending new:', e.message);
     }
   }
 
@@ -68,7 +68,7 @@ async function renderTierChannel(client, tierNumber) {
       const newMsg = await channel.send({ embeds: [embed] });
       db.saveTierMessage(tierNumber, newMsg.id, channel.id);
     } catch (err) {
-      console.error(`[TierRenderer] ${tierNumber}?? ??? ??? ?? ??:`, err.message);
+      console.error(`[TierRenderer] Tier ${tierNumber} send message failed:`, err.message);
     }
   }
 }
@@ -78,7 +78,7 @@ async function updateAllTierChannels(client) {
     try {
       await renderTierChannel(client, t);
     } catch (err) {
-      console.error(`?? ${t} ??? ? ?? ??:`, err.message);
+      console.error(`Tier ${t} render error:`, err.message);
     }
   }
 }
