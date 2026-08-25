@@ -36,25 +36,25 @@ for (const file of commandFiles) {
 
 async function registerSlashCommands() {
   if (!config.token || !config.clientId) {
-    console.warn('[Slash Commands] TOKEN ?? CLIENT_ID? ?? ?? ??? ?????.');
+    console.warn('[Slash Commands] No TOKEN or CLIENT_ID configured');
     return;
   }
 
   const rest = new REST().setToken(config.token);
   try {
-    console.log(`[Slash Commands] ${slashCommandsJSON.length}? ??? ????? ?? ?? ?...`);
+    console.log(`[Slash Commands] Registering ${slashCommandsJSON.length} commands...`);
     if (config.guildId) {
       await rest.put(
         Routes.applicationGuildCommands(config.clientId, config.guildId),
         { body: slashCommandsJSON }
       );
-      console.log(`[Slash Commands] ??(${config.guildId})? ?? ?? ??!`);
+      console.log(`[Slash Commands] Registered to Guild (${config.guildId}) successfully!`);
     } else {
       await rest.put(
         Routes.applicationCommands(config.clientId),
         { body: slashCommandsJSON }
       );
-      console.log('[Slash Commands] ??? ??? ?? ??!');
+      console.log('[Slash Commands] Registered globally successfully!');
     }
   } catch (error) {
     console.error('[Slash Commands Error]', error);
@@ -63,28 +63,29 @@ async function registerSlashCommands() {
 
 client.once(Events.ClientReady, async (c) => {
   console.log('=========================================');
-  console.log(`?? ???? ??? ?? ? ?? ??: ${c.user.tag}`);
+  console.log(`[Bot Ready] Connected as: ${c.user.tag}`);
   console.log('=========================================');
   
   await registerSlashCommands();
 
   try {
-    console.log('[TierRenderer] ?? ? ?? ?? ??? ??? ?...');
+    console.log('[TierRenderer] Updating tier channels...');
     await updateAllTierChannels(c);
-    console.log('[TierRenderer] ??? ??!');
+    console.log('[TierRenderer] Tier channels updated!');
   } catch (e) {
-    console.error('[TierRenderer] ??? ??:', e);
+    console.error('[TierRenderer Error]', e);
   }
 });
 
+// ?? ??? ??? ??? (!panel, !p, !??, !??)
 client.on(Events.MessageCreate, async (message) => {
   if (message.author.bot) return;
 
-  const content = message.content.trim();
-  if (content === '!??' || content === '!panel' || content === '!????' || content === '!p') {
+  const content = message.content.trim().toLowerCase();
+  if (content === '!panel' || content === '!p' || content === '!??' || content === '!??' || content === '!rank') {
     const isOwner = message.guild?.ownerId === message.author.id;
     if (!checkAdmin(message.member) && !isOwner) {
-      return message.reply('? ?? ???? ??? ??? ? ????.');
+      return message.reply('\u274C \uAD00\uB9AC\uC790\uB9CC \uD328\uB110\uC744 \uC0DD\uC131\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4. (Admin only)');
     }
 
     try {
@@ -93,7 +94,7 @@ client.on(Events.MessageCreate, async (message) => {
       await message.delete().catch(() => null);
     } catch (err) {
       console.error('[Panel Send Error]', err);
-      message.reply('? ?? ?? ? ??? ??????. ?? ?? ???/??? ?? ??? ??????.');
+      message.reply('\u274C \uD328\uB110 \uC804\uC1A1 \uC2E4\uD328. \uBD07\uC758 \uCC44\uB110 \uAD8C\uD55C(\uBA54\uC2DC\uC9C0/\uC784\uBE44\uB4DC \uBCF4\uB0B4\uAE30)\uC744 \uD655\uC778\uD574\uC8FC\uC138\uC694.');
     }
   }
 });
@@ -127,7 +128,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
   } catch (error) {
     console.error('[Interaction Error]', error);
-    const replyMsg = { content: '? ?? ? ??? ??????.', ephemeral: true };
+    const replyMsg = { content: '\u274C \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.', ephemeral: true };
     if (interaction.replied || interaction.deferred) {
       await interaction.followUp(replyMsg).catch(() => null);
     } else {
@@ -137,7 +138,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 });
 
 if (!config.token) {
-  console.error('? .env ??? DISCORD_TOKEN? ???? ?????.');
+  console.error('No DISCORD_TOKEN provided in environment variables');
   process.exit(1);
 }
 
