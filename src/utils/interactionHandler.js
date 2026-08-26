@@ -74,8 +74,8 @@ async function handleButton(interaction) {
     }
 
     const options = allUsers.slice(0, 25).map(u => ({
-      label: ${u.rank}등 :  (),
-      description: 스타일:  | -TIER | 승 패,
+      label: u.rank + '등 : ' + u.nickname + ' (' + u.realname + ')',
+      description: '스타일: ' + u.style + ' | ' + getTierByRank(u.rank) + '-TIER | ' + u.wins + '승 ' + u.losses + '패',
       value: u.id
     }));
 
@@ -101,8 +101,8 @@ async function handleButton(interaction) {
     }
 
     const options = allUsers.slice(0, 25).map(u => ({
-      label: ${u.rank}등 :  (),
-      description: 스타일:  | -TIER,
+      label: u.rank + '등 : ' + u.nickname + ' (' + u.realname + ')',
+      description: '스타일: ' + u.style + ' | ' + getTierByRank(u.rank) + '-TIER',
       value: u.id
     }));
 
@@ -142,10 +142,10 @@ async function handleModalSubmit(interaction) {
 
     const embed = new EmbedBuilder()
       .setTitle('🎉 [유저 등록 완료]')
-      .setDescription(**** ()님이 **-TIER** (등)에 성공적으로 등록되었습니다.)
+      .setDescription('**' + newUser.nickname + '** (' + newUser.realname + ')님이 **' + actualTier + '-TIER** (' + newUser.rank + '등)에 성공적으로 등록되었습니다.')
       .addFields(
-        { name: '표시 형식', value: -  () /  },
-        { name: '배정 순위', value: **등** (-TIER), inline: true }
+        { name: '표시 형식', value: '- ' + newUser.nickname + ' (' + newUser.realname + ') / ' + newUser.style },
+        { name: '배정 순위', value: '**' + newUser.rank + '등** (' + actualTier + '-TIER)', inline: true }
       )
       .setColor(0x2ECC71);
 
@@ -187,9 +187,9 @@ async function handleStringSelect(interaction) {
       }
 
       return {
-        label: ${u.rank}등 :  (),
-        description: 스타일:  | ,
-        value: ${challengerId}_vs_
+        label: u.rank + '등 : ' + u.nickname + ' (' + u.realname + ')',
+        description: '스타일: ' + u.style + ' | ' + desc,
+        value: challengerId + '_vs_' + u.id
       };
     });
 
@@ -201,7 +201,7 @@ async function handleStringSelect(interaction) {
     const row = new ActionRowBuilder().addComponents(defenderSelect);
 
     await interaction.update({
-      content: ⚔️ **[도전자:  () / 등]**\n대결한 상대방 유저를 선택해주세요:,
+      content: '⚔️ **[도전자: ' + challenger.nickname + ' (' + challenger.realname + ') / ' + challenger.rank + '등]**\n대결한 상대방 유저를 선택해주세요:',
       components: [row]
     });
   }
@@ -227,8 +227,8 @@ async function handleStringSelect(interaction) {
 
       if (!isValidChallenge) {
         return interaction.update({
-          content: ❌ **도전 불가**: 도전자보다 최대 **단계 위**의 유저에게만 도전할 수 있습니다.\n +
-                   도전자(: **등**) ➡️ 상대방(: **등**) 사이에 도전 가능한 직속 상위 유저가 존재합니다.,
+          content: '❌ **도전 불가**: 도전자보다 최대 **' + config.maxChallengeAbove + '단계 위**의 유저에게만 도전할 수 있습니다.\n' +
+                   '도전자(' + challenger.nickname + ': **' + cRank + '등**) ➡️ 상대방(' + defender.nickname + ': **' + dRank + '등**) 사이에 도전 가능한 직속 상위 유저가 존재합니다.',
           components: []
         });
       }
@@ -236,17 +236,17 @@ async function handleStringSelect(interaction) {
 
     const resultRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
-        .setCustomId(tn_match_win__)
-        .setLabel(🏆  승리 (도전 성공))
+        .setCustomId('btn_match_win_' + challengerId + '_' + defenderId)
+        .setLabel('🏆 ' + challenger.nickname + ' 승리 (도전 성공)')
         .setStyle(ButtonStyle.Success),
       new ButtonBuilder()
-        .setCustomId(tn_match_loss__)
-        .setLabel(🛡️  패배 (도전 실패))
+        .setCustomId('btn_match_loss_' + challengerId + '_' + defenderId)
+        .setLabel('🛡️ ' + challenger.nickname + ' 패배 (도전 실패)')
         .setStyle(ButtonStyle.Danger)
     );
 
     await interaction.update({
-      content: ⚔️ **[매치]  (등) VS  (등)**\n경기 결과를 선택해 주세요:,
+      content: '⚔️ **[매치] ' + challenger.nickname + ' (' + cRank + '등) VS ' + defender.nickname + ' (' + dRank + '등)**\n경기 결과를 선택해 주세요:',
       components: [resultRow]
     });
   }
@@ -270,16 +270,16 @@ async function handleStringSelect(interaction) {
     const canChallengeUsers = higherUsers.slice(-config.maxChallengeAbove);
 
     const challengeText = canChallengeUsers.length > 0
-      ? canChallengeUsers.map(r => • **등** :  () / ).join('\n')
+      ? canChallengeUsers.map(r => '• **' + r.rank + '등** : ' + r.nickname + ' (' + r.realname + ') / ' + r.style).join('\n')
       : (user.rank === 1 ? '👑 현재 1등 (최정상) 입니다!' : '도전 가능한 대상이 없습니다.');
 
     const embed = new EmbedBuilder()
-      .setTitle(👤  () 프로필)
+      .setTitle('👤 ' + user.nickname + ' (' + user.realname + ') 프로필')
       .setColor(config.tiers[tier].color)
       .addFields(
-        { name: '🏆 현재 순위', value: **등** (-TIER), inline: true },
-        { name: '⚔️ 스타일', value: ${user.style}, inline: true },
-        { name: '📊 전적', value: ${user.wins}승 패 (승률: ), inline: true },
+        { name: '🏆 현재 순위', value: '**' + user.rank + '등** (' + tier + '-TIER)', inline: true },
+        { name: '⚔️ 스타일', value: '' + user.style, inline: true },
+        { name: '📊 전적', value: user.wins + '승 ' + user.losses + '패 (승률: ' + winRate + ')', inline: true },
         { name: '🎯 도전 가능 대상 (직속 상위 3인)', value: challengeText }
       );
 
@@ -312,10 +312,10 @@ async function handleMatchResultButton(interaction) {
     const changeResult = db.applyLadderWin(challengerId, defenderId);
     if (changeResult.rankChanged) {
       const newTier = getTierByRank(changeResult.challengerNewRank);
-      summaryText = 🔥 **[도전 성공]** ****님이 ****님을 상대로 승리하여 **등**(-TIER)으로 상승했습니다!\n +
-                    (기존 등 -> 등, 피도전자 및 사이 유저 1등씩 밀림);
+      summaryText = '🔥 **[도전 성공]** **' + challenger.nickname + '**님이 **' + defender.nickname + '**님을 상대로 승리하여 **' + changeResult.challengerNewRank + '등**(' + newTier + '-TIER)으로 상승했습니다!\n' +
+                    '(기존 ' + changeResult.challengerOldRank + '등 -> ' + changeResult.challengerNewRank + '등, 피도전자 및 사이 유저 1등씩 밀림)';
     } else {
-      summaryText = ✅ ****님이 승리했습니다. (순위 변동 없음);
+      summaryText = '✅ **' + challenger.nickname + '**님이 승리했습니다. (순위 변동 없음)';
     }
 
     logEmbed.setTitle('⚔️ 경기 결과 신고 (승리)')
@@ -323,7 +323,7 @@ async function handleMatchResultButton(interaction) {
       .setColor(0x2ECC71);
   } else {
     db.applyLadderLoss(challengerId, defenderId, challengerId);
-    summaryText = 🛡️ **[도전 실패]** ****님이 ****님에게 패배하였습니다. (순위 변동 없음);
+    summaryText = '🛡️ **[도전 실패]** **' + challenger.nickname + '**님이 **' + defender.nickname + '**님에게 패배하였습니다. (순위 변동 없음)';
 
     logEmbed.setTitle('⚔️ 경기 결과 신고 (패배)')
       .setDescription(summaryText)
