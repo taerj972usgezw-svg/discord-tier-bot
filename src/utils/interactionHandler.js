@@ -20,29 +20,30 @@ async function handleButton(interaction) {
 
     const nickInput = new TextInputBuilder()
       .setCustomId('input_nickname')
-      .setLabel('\uB2C9\uB124\uC784 (\uB514\uC2A4\uCF54\uB4DC \uB610\uB294 \uAC8C\uC784 \uB2C9\uB124\uC784)')
+      .setLabel('닉네임 (디스코드 또는 게임 닉네임)')
       .setStyle(TextInputStyle.Short)
-      .setValue(existing ? existing.nickname : '')
-      .setPlaceholder('\uC608: \uD64D\uAE38\uB3D9')
+      .setPlaceholder('예: 홍길동')
       .setRequired(true);
 
     const realInput = new TextInputBuilder()
       .setCustomId('input_realname')
-      .setLabel('\uBCF8\uBA85 \uB610\uB294 \uBCC4\uBA85')
+      .setLabel('본명 또는 별명')
       .setStyle(TextInputStyle.Short)
-      .setValue(existing ? existing.realname : '')
-      .setPlaceholder('\uC608: \uAE38\uB3D9\uC774')
+      .setPlaceholder('예: 길동이')
       .setRequired(true);
 
     const styleInput = new TextInputBuilder()
       .setCustomId('input_style')
-      .setLabel('\uC885\uC871 / \uC2A4\uD0C0\uC77C (\uD55C\uB460 \uB610\uB294 \uC678\uB460)')
+      .setLabel('종족 / 스타일 (한둠 또는 외둠)')
       .setStyle(TextInputStyle.Short)
-      .setValue(existing ? existing.style : '')
-      .setPlaceholder('\uD55C\uB460 \uB610\uB294 \uC678\uB460')
-      .setMinLength(2)
-      .setMaxLength(2)
+      .setPlaceholder('한둠 또는 외둠')
       .setRequired(true);
+
+    if (existing) {
+      if (existing.nickname) nickInput.setValue(existing.nickname);
+      if (existing.realname) realInput.setValue(existing.realname);
+      if (existing.style) styleInput.setValue(existing.style);
+    }
 
     modal.addComponents(
       new ActionRowBuilder().addComponents(nickInput),
@@ -62,37 +63,35 @@ async function handleButton(interaction) {
 
     const modal = new ModalBuilder()
       .setCustomId('modal_admin_add_user')
-      .setTitle('\uD83D\uDC51 [\uAD00\uB9AC\uC790] \uC720\uC800 \uCD94\uAC00 (\uD2F0\uC5B4 \uC9C0\uC815)');
+      .setTitle('👑 [관리자] 유저 추가 (티어 지정)');
 
     const nickInput = new TextInputBuilder()
       .setCustomId('admin_input_nickname')
-      .setLabel('\uB2C9\uB124\uC784')
+      .setLabel('닉네임')
       .setStyle(TextInputStyle.Short)
-      .setPlaceholder('\uC608: \uD64D\uAE38\uB3D9')
+      .setPlaceholder('예: 홍길동')
       .setRequired(true);
 
     const realInput = new TextInputBuilder()
       .setCustomId('admin_input_realname')
-      .setLabel('\uBCF8\uBA85 \uB610\uB294 \uBCC4\uBA85')
+      .setLabel('본명 또는 별명')
       .setStyle(TextInputStyle.Short)
-      .setPlaceholder('\uC608: \uAE38\uB3D9\uC774')
+      .setPlaceholder('예: 길동이')
       .setRequired(true);
 
     const styleInput = new TextInputBuilder()
       .setCustomId('admin_input_style')
-      .setLabel('\uC885\uC871 / \uC2A4\uD0C0\uC77C (\uD55C\uB460 \uB610\uB294 \uC678\uB460)')
+      .setLabel('종족 / 스타일 (한둠 또는 외둠)')
       .setStyle(TextInputStyle.Short)
-      .setPlaceholder('\uD55C\uB460 \uB610\uB294 \uC678\uB460')
+      .setPlaceholder('한둠 또는 외둠')
       .setRequired(true);
 
     const tierInput = new TextInputBuilder()
       .setCustomId('admin_input_tier')
-      .setLabel('\uBC30\uC815\uD560 \uD2F0\uC5B4 \uBC88\uD638 (1, 2, 3, 4 \uC911 \uC785\uB825)')
+      .setLabel('배정할 티어 번호 (1, 2, 3, 4 중 입력)')
       .setStyle(TextInputStyle.Short)
       .setPlaceholder('1 (1티어), 2 (2티어), 3 (3티어), 4 (4티어)')
       .setValue('1')
-      .setMinLength(1)
-      .setMaxLength(1)
       .setRequired(true);
 
     modal.addComponents(
