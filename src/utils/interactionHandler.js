@@ -189,7 +189,7 @@ async function handleStringSelect(interaction) {
       return {
         label: u.rank + '등 : ' + u.nickname + ' (' + u.realname + ')',
         description: '스타일: ' + u.style + ' | ' + desc,
-        value: challengerId + '_vs_' + u.id
+        value: challengerId + ':::' + u.id
       };
     });
 
@@ -208,7 +208,7 @@ async function handleStringSelect(interaction) {
 
   // 2. 피도전자 선택 -> 승/패 버튼 띄우기
   else if (interaction.customId === 'select_match_defender') {
-    const [challengerId, defenderId] = interaction.values[0].split('_vs_');
+    const [challengerId, defenderId] = interaction.values[0].split(':::');
     const challenger = db.getUserById(challengerId);
     const defender = db.getUserById(defenderId);
 
@@ -236,11 +236,11 @@ async function handleStringSelect(interaction) {
 
     const resultRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
-        .setCustomId('btn_match_win_' + challengerId + '_' + defenderId)
+        .setCustomId('btn_match_win:::' + challengerId + ':::' + defenderId)
         .setLabel('🏆 ' + challenger.nickname + ' 승리 (도전 성공)')
         .setStyle(ButtonStyle.Success),
       new ButtonBuilder()
-        .setCustomId('btn_match_loss_' + challengerId + '_' + defenderId)
+        .setCustomId('btn_match_loss:::' + challengerId + ':::' + defenderId)
         .setLabel('🛡️ ' + challenger.nickname + ' 패배 (도전 실패)')
         .setStyle(ButtonStyle.Danger)
     );
@@ -289,14 +289,13 @@ async function handleStringSelect(interaction) {
 
 async function handleMatchResultButton(interaction) {
   const customId = interaction.customId;
-  const isWin = customId.startsWith('btn_match_win_');
-  const isLoss = customId.startsWith('btn_match_loss_');
+  const isWin = customId.startsWith('btn_match_win:::');
+  const isLoss = customId.startsWith('btn_match_loss:::');
 
   if (!isWin && !isLoss) return false;
 
-  const parts = customId.replace('btn_match_win_', '').replace('btn_match_loss_', '').split('_');
-  const challengerId = parts[0];
-  const defenderId = parts[1];
+  const raw = isWin ? customId.replace('btn_match_win:::', '') : customId.replace('btn_match_loss:::', '');
+  const [challengerId, defenderId] = raw.split(':::');
 
   const challenger = db.getUserById(challengerId);
   const defender = db.getUserById(defenderId);
