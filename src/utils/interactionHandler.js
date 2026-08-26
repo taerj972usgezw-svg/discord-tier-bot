@@ -1,6 +1,6 @@
 const { 
   ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, 
-  EmbedBuilder, UserSelectMenuBuilder, ButtonStyle, ButtonBuilder 
+  EmbedBuilder, StringSelectMenuBuilder, ButtonStyle, ButtonBuilder 
 } = require('discord.js');
 const db = require('../database');
 const config = require('../config');
@@ -10,17 +10,20 @@ const { checkAdmin } = require('./adminCheck');
 async function handleButton(interaction) {
   const customId = interaction.customId;
 
-  // 1. 일반 유저 등록 / 수정 버튼
+  // 1. 참가 등록 버튼 (관리자 전용 / 티어 지정)
   if (customId === 'btn_register') {
-    const existing = db.getUserById(interaction.user.id);
+    const isOwner = interaction.guild?.ownerId === interaction.user.id;
+    if (!checkAdmin(interaction.member) && !isOwner) {
+      return interaction.reply({ content: '❌ 참가 등록은 서버 관리자만 진행할 수 있습니다.', ephemeral: true });
+    }
 
     const modal = new ModalBuilder()
-      .setCustomId('modal_register')
-      .setTitle(existing ? '\u270F\uFE0F \uB0B4 \uC815\uBCF4 \uC218\uC815' : '\uD83D\uDCDD \uC21C\uC704\uD45C \uCC38\uAC00 \uB4F1\uB85D');
+      .setCustomId('modal_register_admin')
+      .setTitle('📝 유저 등록 (티어 지정)');
 
     const nickInput = new TextInputBuilder()
       .setCustomId('input_nickname')
-      .setLabel('닉네임 (디스코드 또는 게임 닉네임)')
+      .setLabel('닉네임')
       .setStyle(TextInputStyle.Short)
       .setPlaceholder('예: 홍길동')
       .setRequired(true);
@@ -39,58 +42,11 @@ async function handleButton(interaction) {
       .setPlaceholder('한둠 또는 외둠')
       .setRequired(true);
 
-    if (existing) {
-      if (existing.nickname) nickInput.setValue(existing.nickname);
-      if (existing.realname) realInput.setValue(existing.realname);
-      if (existing.style) styleInput.setValue(existing.style);
-    }
-
-    modal.addComponents(
-      new ActionRowBuilder().addComponents(nickInput),
-      new ActionRowBuilder().addComponents(realInput),
-      new ActionRowBuilder().addComponents(styleInput)
-    );
-
-    await interaction.showModal(modal);
-  }
-
-  // 2. 관리자 유저 직접 추가 (티어 지정 가능 & 무제한 연속 추가)
-  else if (customId === 'btn_admin_add_user') {
-    const isOwner = interaction.guild?.ownerId === interaction.user.id;
-    if (!checkAdmin(interaction.member) && !isOwner) {
-      return interaction.reply({ content: '\u274C \uAD00\uB9AC\uC790\uB9CC \uC0AC\uC6A9\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.', ephemeral: true });
-    }
-
-    const modal = new ModalBuilder()
-      .setCustomId('modal_admin_add_user')
-      .setTitle('👑 [관리자] 유저 추가 (티어 지정)');
-
-    const nickInput = new TextInputBuilder()
-      .setCustomId('admin_input_nickname')
-      .setLabel('닉네임')
-      .setStyle(TextInputStyle.Short)
-      .setPlaceholder('예: 홍길동')
-      .setRequired(true);
-
-    const realInput = new TextInputBuilder()
-      .setCustomId('admin_input_realname')
-      .setLabel('본명 또는 별명')
-      .setStyle(TextInputStyle.Short)
-      .setPlaceholder('예: 길동이')
-      .setRequired(true);
-
-    const styleInput = new TextInputBuilder()
-      .setCustomId('admin_input_style')
-      .setLabel('종족 / 스타일 (한둠 또는 외둠)')
-      .setStyle(TextInputStyle.Short)
-      .setPlaceholder('한둠 또는 외둠')
-      .setRequired(true);
-
     const tierInput = new TextInputBuilder()
-      .setCustomId('admin_input_tier')
+      .setCustomId('input_tier')
       .setLabel('배정할 티어 번호 (1, 2, 3, 4 중 입력)')
       .setStyle(TextInputStyle.Short)
-      .setPlaceholder('1 (1티어), 2 (2티어), 3 (3티어), 4 (4티어)')
+      .setPlaceholder('1, 2, 3, 4 중 선택')
       .setValue('1')
       .setRequired(true);
 
@@ -104,50 +60,189 @@ async function handleButton(interaction) {
     await interaction.showModal(modal);
   }
 
-  // 3. 순위표 강제 새로고침 버튼
+  // 2. 순위표 강제 새로고침 버튼
   else if (customId === 'btn_admin_refresh') {
     await updateAllTierChannels(interaction.client);
-    await interaction.reply({ content: '\u2705 \uBAA8\uB4E0 \uD2F0\uC5B4 \uCC44\uB110\uC758 \uC21C\uC704\uD45C\uAC00 \uC131\uACF5\uC801\uC73C\uB85C \uAC31\uC2E0\uB418\uC5C8\uC2B5\uB2C8\uB2E4!', ephemeral: true });
+    await interaction.reply({ content: '✅ 모든 티어 채널의 순위표가 최신 상태로 갱신되었습니다!', ephemeral: true });
   }
 
-  // 4. 경기 결과 신고 버튼
+  // 3. 경기 결과 신고 버튼 (순위표에 등록된 닉네임 선택)
   else if (customId === 'btn_match') {
-    const user = db.getUserById(interaction.user.id);
-    if (!user) {
-      return interaction.reply({
-        content: '\u274C \uBA3C\uC800 [ \uD83D\uDCDD \uCC38\uAC00 \uB4F1\uB85D ] \uBC84\uD2BC\uC744 \uB20C\uB7EC \uB4F1\uB85D\uD574\uC8FC\uC138\uC694.',
-        ephemeral: true
-      });
+    const allUsers = db.getAllUsers();
+    if (allUsers.length < 2) {
+      return interaction.reply({ content: '❌ 순위표에 최소 2명 이상의 유저가 등록되어 있어야 경기를 신고할 수 있습니다.', ephemeral: true });
     }
 
-    const allUsers = db.getAllUsers().filter(u => u.id !== interaction.user.id);
-    if (allUsers.length === 0) {
-      return interaction.reply({ content: '\u274C \uB3C4\uC804\uD560 \uB2E4\uB978 \uC720\uC800\uAC00 \uC544\uC9C1 \uB4F1\uB85D\uB418\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4.', ephemeral: true });
-    }
+    // 도전자 선택 메뉴 (최대 25명)
+    const options = allUsers.slice(0, 25).map(u => ({
+      label: `${u.rank}등 : ${u.nickname} (${u.realname})`,
+      description: `스타일: ${u.style} | ${getTierByRank(u.rank)}-TIER | ${u.wins}승 ${u.losses}패`,
+      value: u.id
+    }));
 
-    const userSelect = new UserSelectMenuBuilder()
-      .setCustomId('select_match_opponent')
-      .setPlaceholder('\uB3C4\uC804\uD588\uB358 \uC0C1\uB300\uBC29 \uC720\uC800\uB97C \uC120\uD0DD\uD558\uC138\uC694')
-      .setMinValues(1)
-      .setMaxValues(1);
+    const challengerSelect = new StringSelectMenuBuilder()
+      .setCustomId('select_match_challenger')
+      .setPlaceholder('1단계: 도전한 사람(본인/도전자)을 선택하세요')
+      .addOptions(options);
 
-    const row = new ActionRowBuilder().addComponents(userSelect);
+    const row = new ActionRowBuilder().addComponents(challengerSelect);
 
     await interaction.reply({
-      content: '\uD83C\uDFAF **[\uACBD\uAE30 \uACB0\uACFC \uC2E0\uACE0]** \uC0C1\uB300\uBC29 \uC720\uC800\uB97C \uC544\uB798 \uBAA9\uB85D\uC5D0\uC11C \uC120\uD0DD\uD574\uC8FC\uC138\uC694:',
+      content: '⚔️ **[경기 결과 신고 - 1단계]**\n도전한 유저(도전자)를 목록에서 선택해주세요:',
       components: [row],
       ephemeral: true
     });
   }
 
-  // 5. 내 정보 조회 버튼
+  // 4. 순위 / 프로필 확인 버튼
   else if (customId === 'btn_profile') {
-    const user = db.getUserById(interaction.user.id);
+    const allUsers = db.getAllUsers();
+    if (allUsers.length === 0) {
+      return interaction.reply({ content: '❌ 현재 순위표에 등록된 유저가 없습니다.', ephemeral: true });
+    }
+
+    const options = allUsers.slice(0, 25).map(u => ({
+      label: `${u.rank}등 : ${u.nickname} (${u.realname})`,
+      description: `스타일: ${u.style} | ${getTierByRank(u.rank)}-TIER`,
+      value: u.id
+    }));
+
+    const profileSelect = new StringSelectMenuBuilder()
+      .setCustomId('select_profile_user')
+      .setPlaceholder('조회할 유저를 선택하세요')
+      .addOptions(options);
+
+    const row = new ActionRowBuilder().addComponents(profileSelect);
+
+    await interaction.reply({
+      content: '👤 **[프로필 및 도전 가능 상대 조회]** 유저를 선택하세요:',
+      components: [row],
+      ephemeral: true
+    });
+  }
+}
+
+async function handleModalSubmit(interaction) {
+  // 관리자 유저 등록 (티어 지정)
+  if (interaction.customId === 'modal_register_admin' || interaction.customId === 'modal_admin_add_user') {
+    const nickname = interaction.fields.getTextInputValue('input_nickname')?.trim() || interaction.fields.getTextInputValue('admin_input_nickname')?.trim();
+    const realname = interaction.fields.getTextInputValue('input_realname')?.trim() || interaction.fields.getTextInputValue('admin_input_realname')?.trim();
+    let style = interaction.fields.getTextInputValue('input_style')?.trim() || interaction.fields.getTextInputValue('admin_input_style')?.trim();
+    const tierStr = interaction.fields.getTextInputValue('input_tier')?.trim() || interaction.fields.getTextInputValue('admin_input_tier')?.trim();
+    const tierNum = parseInt(tierStr, 10) || 1;
+
+    if (style !== '한둠' && style !== '외둠') {
+      style = style.includes('외') ? '외둠' : '한둠';
+    }
+
+    const uniqueId = 'user_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+    const newUser = db.registerUserWithTier(uniqueId, nickname, realname, style, tierNum);
+    const actualTier = getTierByRank(newUser.rank);
+
+    await updateAllTierChannels(interaction.client);
+
+    const embed = new EmbedBuilder()
+      .setTitle('🎉 [유저 등록 완료]')
+      .setDescription(`**${newUser.nickname}** (${newUser.realname})님이 **${actualTier}-TIER** (${newUser.rank}등)에 성공적으로 등록되었습니다.`)
+      .addFields(
+        { name: '표시 형식', value: `- ${newUser.nickname} (${newUser.realname}) / ${newUser.style}` },
+        { name: '배정 순위', value: `**${newUser.rank}등** (${actualTier}-TIER)`, inline: true }
+      )
+      .setColor(0x2ECC71);
+
+    await interaction.reply({ embeds: [embed], ephemeral: true });
+  }
+}
+
+async function handleStringSelect(interaction) {
+  // 1. 도전자 선택 -> 피도전자 선택 메뉴 띄우기
+  if (interaction.customId === 'select_match_challenger') {
+    const challengerId = interaction.values[0];
+    const challenger = db.getUserById(challengerId);
+
+    if (!challenger) {
+      return interaction.update({ content: '❌ 선택한 유저를 찾을 수 없습니다.', components: [] });
+    }
+
+    const allUsers = db.getAllUsers();
+    // 도전 가능한 대상 (최대 3등 위 ~ 하위 유저)
+    const rivals = allUsers.filter(u => u.id !== challengerId);
+
+    if (rivals.length === 0) {
+      return interaction.update({ content: '❌ 상대할 다른 유저가 없습니다.', components: [] });
+    }
+
+    const options = rivals.slice(0, 25).map(u => {
+      const diff = challenger.rank - u.rank;
+      const desc = diff > 0 ? `${diff}등 위 (도전 가능)` : `${Math.abs(diff)}등 아래`;
+      return {
+        label: `${u.rank}등 : ${u.nickname} (${u.realname})`,
+        description: `스타일: ${u.style} | ${desc}`,
+        value: `${challengerId}_vs_${u.id}`
+      };
+    });
+
+    const defenderSelect = new StringSelectMenuBuilder()
+      .setCustomId('select_match_defender')
+      .setPlaceholder('2단계: 대결한 상대방(피도전자)을 선택하세요')
+      .addOptions(options);
+
+    const row = new ActionRowBuilder().addComponents(defenderSelect);
+
+    await interaction.update({
+      content: `⚔️ **[도전자: ${challenger.nickname} (${challenger.realname}) / ${challenger.rank}등]**\n대결한 상대방 유저를 선택해주세요:`,
+      components: [row]
+    });
+  }
+
+  // 2. 피도전자 선택 -> 승/패 버튼 띄우기
+  else if (interaction.customId === 'select_match_defender') {
+    const [challengerId, defenderId] = interaction.values[0].split('_vs_');
+    const challenger = db.getUserById(challengerId);
+    const defender = db.getUserById(defenderId);
+
+    if (!challenger || !defender) {
+      return interaction.update({ content: '❌ 유저 정보를 찾을 수 없습니다.', components: [] });
+    }
+
+    const cRank = challenger.rank;
+    const dRank = defender.rank;
+
+    if (cRank > dRank) {
+      const rankDiff = cRank - dRank;
+      if (rankDiff > config.maxChallengeAbove) {
+        return interaction.update({
+          content: `❌ **규칙 위반**: 최대 **${config.maxChallengeAbove}등 위**의 유저에게만 도전할 수 있습니다.\n` +
+                   `도전자(${challenger.nickname}): **${cRank}등** | 상대방(${defender.nickname}): **${dRank}등** (차이: ${rankDiff}등)`,
+          components: []
+        });
+      }
+    }
+
+    const resultRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`btn_match_win_${challengerId}_${defenderId}`)
+        .setLabel(`🏆 ${challenger.nickname} 승리 (도전 성공)`)
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId(`btn_match_loss_${challengerId}_${defenderId}`)
+        .setLabel(`🛡️ ${challenger.nickname} 패배 (도전 실패)`)
+        .setStyle(ButtonStyle.Danger)
+    );
+
+    await interaction.update({
+      content: `⚔️ **[매치] ${challenger.nickname} (${cRank}등) VS ${defender.nickname} (${dRank}등)**\n경기 결과를 선택해 주세요:`,
+      components: [resultRow]
+    });
+  }
+
+  // 3. 프로필 조회
+  else if (interaction.customId === 'select_profile_user') {
+    const userId = interaction.values[0];
+    const user = db.getUserById(userId);
+
     if (!user) {
-      return interaction.reply({
-        content: '\u274C \uB4F1\uB85D\uB418\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4. [ \uD83D\uDCDD \uCC38\uAC00 \uB4F1\uB85D ] \uBC84\uD2BC\uC744 \uB20C\uB7EC \uBA3C\uC800 \uCC38\uAC00\uD558\uC138\uC694!',
-        ephemeral: true
-      });
+      return interaction.update({ content: '❌ 유저를 찾을 수 없습니다.', components: [] });
     }
 
     const tier = getTierByRank(user.rank);
@@ -159,164 +254,44 @@ async function handleButton(interaction) {
     for (let r = Math.max(1, user.rank - config.maxChallengeAbove); r < user.rank; r++) {
       const rival = db.getUserByRank(r);
       if (rival) {
-        canChallenge.push('• **' + rival.rank + '\uB4F1** : ' + rival.nickname + ' (' + rival.realname + ') / ' + rival.style);
+        canChallenge.push(`• **${rival.rank}등** : ${rival.nickname} (${rival.realname}) / ${rival.style}`);
       }
     }
 
     const challengeText = canChallenge.length > 0
       ? canChallenge.join('\n')
-      : (user.rank === 1 ? '\uD83D\uDC51 \uD604\uC7AC 1\uB4F1 (\uCD5C\uC815\uC0C1) \uC785\uB825\uB2C8\uB2E4!' : '\uB3C4\uC804 \uAC00\uB2A5\uD55C \uB300\uC0C1\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.');
+      : (user.rank === 1 ? '👑 현재 1등 (최정상) 입니다!' : '도전 가능한 대상이 없습니다.');
 
     const embed = new EmbedBuilder()
-      .setTitle('\uD83D\uDC64 ' + user.nickname + ' (' + user.realname + ') \uD504\uB85C\uD544')
+      .setTitle(`👤 ${user.nickname} (${user.realname}) 프로필`)
       .setColor(config.tiers[tier].color)
       .addFields(
-        { name: '\uD83C\uDFC6 \uD604\uC7AC \uC21C\uC704', value: '**' + user.rank + '\uB4F1** (' + tier + '-TIER)', inline: true },
-        { name: '\u2694\uFE0F \uC2A4\uD0C0\uC77C', value: '' + user.style, inline: true },
-        { name: '\uD83D\uDCCA \uC804\uC801', value: user.wins + '\uC2B9 ' + user.losses + '\uD328 (\uC2B9\uB960: ' + winRate + ')', inline: true },
-        { name: '\uD83C\uDFAF \uB3C4\uC804 \uAC00\uB2A5 \uB300\uC0C1 (\uCD5C\uB300 3\uB4F1 \uC704)', value: challengeText }
-      )
-      .setFooter({ text: '\uB514\uC2A4\uCF54\uB4DC: ' + interaction.user.tag });
+        { name: '🏆 현재 순위', value: `**${user.rank}등** (${tier}-TIER)`, inline: true },
+        { name: '⚔️ 스타일', value: `${user.style}`, inline: true },
+        { name: '📊 전적', value: `${user.wins}승 ${user.losses}패 (승률: ${winRate})`, inline: true },
+        { name: '🎯 도전 가능 대상 (최대 3등 위)', value: challengeText }
+      );
 
-    await interaction.reply({ embeds: [embed], ephemeral: true });
-  }
-}
-
-async function handleModalSubmit(interaction) {
-  // 일반 유저 셀프 등록 / 정보 수정
-  if (interaction.customId === 'modal_register') {
-    const nickname = interaction.fields.getTextInputValue('input_nickname').trim();
-    const realname = interaction.fields.getTextInputValue('input_realname').trim();
-    let style = interaction.fields.getTextInputValue('input_style').trim();
-
-    if (style !== '\uD55C\uB460' && style !== '\uC678\uB460') {
-      style = style.includes('\uC678') ? '\uC678\uB460' : '\uD55C\uB460';
-    }
-
-    const existing = db.getUserById(interaction.user.id);
-    let user;
-    if (existing) {
-      user = db.updateUserInfo(interaction.user.id, nickname, realname, style);
-    } else {
-      user = db.registerUser(interaction.user.id, nickname, realname, style);
-    }
-    const tier = getTierByRank(user.rank);
-
-    await updateAllTierChannels(interaction.client);
-
-    const embed = new EmbedBuilder()
-      .setTitle(existing ? '\u2705 \uC815\uBCF4 \uC218\uC815 \uC644\uB8CC!' : '\uD83C\uDF89 \uC21C\uC704\uD45C \uB4F1\uB85D \uC644\uB8CC!')
-      .setDescription('**' + user.nickname + '**\uB2D8\uC758 \uC815\uBCF4\uAC00 \uC801\uC6A9\uB418\uC5C8\uC2B5\uB2C8\uB2E4.')
-      .addFields(
-        { name: '\uD45C\uC2DC \uD615\uC2DD', value: '- ' + user.nickname + ' (' + user.realname + ') / ' + user.style },
-        { name: '\uBC30\uC815 \uC21C\uC704', value: '**' + user.rank + '\uB4F1** (' + tier + '-TIER)', inline: true }
-      )
-      .setColor(0x2ECC71);
-
-    await interaction.reply({ embeds: [embed], ephemeral: true });
-  }
-
-  // 관리자 유저 추가 (티어 지정)
-  else if (interaction.customId === 'modal_admin_add_user') {
-    const nickname = interaction.fields.getTextInputValue('admin_input_nickname').trim();
-    const realname = interaction.fields.getTextInputValue('admin_input_realname').trim();
-    let style = interaction.fields.getTextInputValue('admin_input_style').trim();
-    const tierStr = interaction.fields.getTextInputValue('admin_input_tier').trim();
-    const tierNum = parseInt(tierStr, 10) || 1;
-
-    if (style !== '\uD55C\uB460' && style !== '\uC678\uB460') {
-      style = style.includes('\uC678') ? '\uC678\uB460' : '\uD55C\uB460';
-    }
-
-    // 고유 ID 생성 (디스코드 유저가 아니어도 관리자가 대신 등록할 수 있도록)
-    const fakeId = 'user_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
-    const newUser = db.registerUserWithTier(fakeId, nickname, realname, style, tierNum);
-    const actualTier = getTierByRank(newUser.rank);
-
-    await updateAllTierChannels(interaction.client);
-
-    const embed = new EmbedBuilder()
-      .setTitle('\uD83D\uDC51 [\uAD00\uB9AC\uC790] \uC720\uC800 \uCD94\uAC00 \uC644\uB8CC!')
-      .setDescription('**' + newUser.nickname + '** (' + newUser.realname + ')\uB2D8\uC774 **' + actualTier + '-TIER** (' + newUser.rank + '\uB4F1)\uC5D0 \uCD94\uAC00\uB418\uC5C8\uC2B5\uB2C8\uB2E4.')
-      .addFields(
-        { name: '\uD45C\uC2DC \uD615\uC2DD', value: '- ' + newUser.nickname + ' (' + newUser.realname + ') / ' + newUser.style },
-        { name: '\uBC30\uC815 \uC21C\uC704', value: '**' + newUser.rank + '\uB4F1** (' + actualTier + '-TIER)', inline: true }
-      )
-      .setColor(0x3498DB);
-
-    await interaction.reply({ embeds: [embed], ephemeral: true });
-  }
-}
-
-async function handleUserSelect(interaction) {
-  if (interaction.customId === 'select_match_opponent') {
-    const defenderId = interaction.values[0];
-    const challengerId = interaction.user.id;
-
-    if (challengerId === defenderId) {
-      return interaction.update({
-        content: '\u274C \uC790\uAE30 \uC790\uC2E0\uC744 \uC0C1\uB300\uB85C \uC120\uD0DD\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.',
-        components: []
-      });
-    }
-
-    const challenger = db.getUserById(challengerId);
-    const defender = db.getUserById(defenderId);
-
-    if (!defender) {
-      return interaction.update({
-        content: '\u274C \uC120\uD0DD\uD55C \uC720\uC800\uAC00 \uC544\uC9C1 \uC21C\uC704\uD45C\uC5D0 \uB4F1\uB85D\uB418\uC5B4 \uC788\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.',
-        components: []
-      });
-    }
-
-    const cRank = challenger.rank;
-    const dRank = defender.rank;
-
-    if (cRank > dRank) {
-      const rankDiff = cRank - dRank;
-      if (rankDiff > config.maxChallengeAbove) {
-        return interaction.update({
-          content: '\u274C \uADDC\uCE59 \uC704\uBC18: \uCD5C\uB300 **' + config.maxChallengeAbove + '\uB4F1 \uC704**\uC758 \uC720\uC800\uC5D0\uAC8C\uB9CC \uB3C4\uC804\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.\n' +
-                   '\uB0B4 \uC21C\uC704: **' + cRank + '\uB4F1** | \uC0C1\uB300\uBC29 \uC21C\uC704: **' + dRank + '\uB4F1** (\uCC28\uC774: ' + rankDiff + '\uB4F1)',
-          components: []
-        });
-      }
-    }
-
-    const resultRow = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId('btn_submit_win_' + defenderId)
-        .setLabel('\uD83C\uDFC6 \uB0B4\uAC00 \uC2B9\uB9AC\uD568 (\uB3C4\uC804 \uC131\uACF5)')
-        .setStyle(ButtonStyle.Success),
-      new ButtonBuilder()
-        .setCustomId('btn_submit_loss_' + defenderId)
-        .setLabel('\uD83D\uDEE1\uFE0F \uB0B4\uAC00 \uD328\uBC30\uD568 (\uB3C4\uC804 \uC2E4\uD328)')
-        .setStyle(ButtonStyle.Danger)
-    );
-
-    await interaction.update({
-      content: '\u2694\uFE0F **[\uC0C1\uB300: ' + defender.nickname + ' (' + defender.realname + ') / ' + defender.rank + '\uB4F1]**\n\uACBD\uAE30 \uACB0\uACFC\uB97C \uC120\uD0DD\uD574 \uC8FC\uC138\uC694:',
-      components: [resultRow]
-    });
+    await interaction.update({ embeds: [embed], components: [] });
   }
 }
 
 async function handleMatchResultButton(interaction) {
   const customId = interaction.customId;
-  const isWin = customId.startsWith('btn_submit_win_');
-  const isLoss = customId.startsWith('btn_submit_loss_');
+  const isWin = customId.startsWith('btn_match_win_');
+  const isLoss = customId.startsWith('btn_match_loss_');
 
   if (!isWin && !isLoss) return false;
 
-  const defenderId = customId.replace('btn_submit_win_', '').replace('btn_submit_loss_', '');
-  const challengerId = interaction.user.id;
+  const parts = customId.replace('btn_match_win_', '').replace('btn_match_loss_', '').split('_');
+  const challengerId = parts[0];
+  const defenderId = parts[1];
 
   const challenger = db.getUserById(challengerId);
   const defender = db.getUserById(defenderId);
 
   if (!challenger || !defender) {
-    return interaction.update({ content: '\u274C \uC720\uC800 \uC815\uBCF4\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.', components: [] });
+    return interaction.update({ content: '❌ 유저 정보를 찾을 수 없습니다.', components: [] });
   }
 
   let summaryText = '';
@@ -326,20 +301,20 @@ async function handleMatchResultButton(interaction) {
     const changeResult = db.applyLadderWin(challengerId, defenderId);
     if (changeResult.rankChanged) {
       const newTier = getTierByRank(changeResult.challengerNewRank);
-      summaryText = '\uD83D\uDD25 **[\uB3C4\uC804 \uC131\uACF5]** <@' + challengerId + '>\uB2D8\uC774 <@' + defenderId + '>\uB2D8\uC744 \uC0C1\uB300\uB85C \uC2B9\uB9AC\uD558\uC5EC **' + changeResult.challengerNewRank + '\uB4F1**(' + newTier + '-TIER)\uC73C\uB85C \uC0C1\uC2B9\uD588\uC2B5\uB2C8\uB2E4!\n' +
-                    '(\uAE30\uC874 ' + changeResult.challengerOldRank + '\uB4F1 -> ' + changeResult.challengerNewRank + '\uB4F1, \uD53C\uB3C4\uC804\uC790 \uBC0F \uC0AC\uC774 \uC720\uC800 1\uB4F1\uC529 \uBC00\uB9BC)';
+      summaryText = `🔥 **[도전 성공]** **${challenger.nickname}**님이 **${defender.nickname}**님을 상대로 승리하여 **${changeResult.challengerNewRank}등**(${newTier}-TIER)으로 상승했습니다!\n` +
+                    `(기존 ${changeResult.challengerOldRank}등 -> ${changeResult.challengerNewRank}등, 피도전자 및 사이 유저 1등씩 밀림)`;
     } else {
-      summaryText = '\u2705 <@' + challengerId + '>\uB2D8\uC774 \uC2B9\uB9AC\uD588\uC2B5\uB2C8\uB2E4. (\uC21C\uC704 \uBCC0\uB3D9 \uC5C6\uC74C)';
+      summaryText = `✅ **${challenger.nickname}**님이 승리했습니다. (순위 변동 없음)`;
     }
 
-    logEmbed.setTitle('\u2694\uFE0F \uACBD\uAE30 \uACB0\uACFC \uC2E0\uACE0 (승\uB9AC)')
+    logEmbed.setTitle('⚔️ 경기 결과 신고 (승리)')
       .setDescription(summaryText)
       .setColor(0x2ECC71);
   } else {
     db.applyLadderLoss(challengerId, defenderId, challengerId);
-    summaryText = '\uD83D\uDEE1\uFE0F **[\uB3C4\uC804 \uC2E4\uD328]** <@' + challengerId + '>\uB2D8\uC774 <@' + defenderId + '>\uB2D8\uC5D0\uAC8C \uD328\uBC30\uD558\uC600\uC2B5\uB2C8\uB2E4. (\uC21C\uC704 \uBCC0\uB3D9 \uC5C6\uC74C)';
+    summaryText = `🛡️ **[도전 실패]** **${challenger.nickname}**님이 **${defender.nickname}**님에게 패배하였습니다. (순위 변동 없음)`;
 
-    logEmbed.setTitle('\u2694\uFE0F \uACBD\uAE30 \uACB0\uACFC \uC2E0\uACE0 (\uD328\uBC30)')
+    logEmbed.setTitle('⚔️ 경기 결과 신고 (패배)')
       .setDescription(summaryText)
       .setColor(0xE74C3C);
   }
@@ -364,6 +339,6 @@ async function handleMatchResultButton(interaction) {
 module.exports = {
   handleButton,
   handleModalSubmit,
-  handleUserSelect,
+  handleStringSelect,
   handleMatchResultButton
 };

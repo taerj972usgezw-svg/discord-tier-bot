@@ -8,7 +8,7 @@ const { checkAdmin } = require('./utils/adminCheck');
 const { 
   handleButton, 
   handleModalSubmit, 
-  handleUserSelect, 
+  handleStringSelect, 
   handleMatchResultButton 
 } = require('./utils/interactionHandler');
 
@@ -122,8 +122,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
 
-    if (interaction.isUserSelectMenu()) {
-      await handleUserSelect(interaction);
+    if (interaction.isStringSelectMenu()) {
+      await handleStringSelect(interaction);
       return;
     }
   } catch (error) {

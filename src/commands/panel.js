@@ -22,30 +22,23 @@ function createPanelComponents() {
   const row1 = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId('btn_register')
-      .setLabel('\uD83D\uDCDD \uCC38\uAC00 \uB4F1\uB85D / \uC815\uBCF4 \uC218\uC815')
+      .setLabel('📝 참가 등록 (티어 지정)')
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
       .setCustomId('btn_match')
-      .setLabel('\u2694\uFE0F \uACBD\uAE30 \uACB0\uACFC \uC2E0\uACE0')
+      .setLabel('⚔️ 경기 결과 신고')
       .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
       .setCustomId('btn_profile')
-      .setLabel('\uD83D\uDC64 \uB0B4 \uC815\uBCF4 / \uB3C4\uC804 \uB300\uC0C1')
-      .setStyle(ButtonStyle.Secondary)
-  );
-
-  const row2 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId('btn_admin_add_user')
-      .setLabel('\uD83D\uDC51 [\uAD00\uB9AC\uC790] \uC720\uC800 \uCD94\uAC00 (\uD2F0\uC5B4 \uC9C0\uC815)')
-      .setStyle(ButtonStyle.Danger),
+      .setLabel('👤 순위 / 프로필 확인')
+      .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId('btn_admin_refresh')
-      .setLabel('\uD83D\uDD04 \uC21C\uC704\uD45C \uAC31\uC2E0')
+      .setLabel('🔄 순위표 갱신')
       .setStyle(ButtonStyle.Secondary)
   );
 
-  return { embeds: [embed], components: [row1, row2] };
+  return { embeds: [embed], components: [row1] };
 }
 
 module.exports = {

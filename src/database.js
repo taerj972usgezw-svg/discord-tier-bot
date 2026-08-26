@@ -67,17 +67,31 @@ module.exports = {
 
   registerUserWithTier: (id, nickname, realname, style, tierNum) => {
     const runTransaction = db.transaction(() => {
-      let targetRank = 1;
-      if (tierNum === 2) targetRank = 6;
-      else if (tierNum === 3) targetRank = 14;
-      else if (tierNum === 4) targetRank = 24;
+      // 티어 범위 정의
+      // 1티어: 1~5등, 2티어: 6~13등, 3티어: 14~23등, 4티어: 24등~
+      let tierStart = 1;
+      let tierEnd = 5;
+      if (tierNum === 2) { tierStart = 6; tierEnd = 13; }
+      else if (tierNum === 3) { tierStart = 14; tierEnd = 23; }
+      else if (tierNum === 4) { tierStart = 24; tierEnd = 99999; }
 
-      const total = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
-      if (targetRank > total + 1) {
-        targetRank = total + 1;
+      // 해당 티어 내에서 현재 등록된 가장 높은 순위 찾기
+      const existingInTier = db.prepare(
+        'SELECT rank FROM users WHERE rank >= ? AND rank <= ? ORDER BY rank ASC'
+      ).all(tierStart, tierEnd);
+
+      let targetRank = tierStart;
+      const occupiedRanks = new Set(existingInTier.map(u => u.rank));
+
+      while (occupiedRanks.has(targetRank)) {
+        targetRank++;
       }
 
-      db.prepare('UPDATE users SET rank = rank + 1 WHERE rank >= ?').run(targetRank);
+      // 이미 해당 랭크가 존재한다면 그 랭크 이상의 유저들을 1칸 뒤로 밀기
+      const existingAtRank = db.prepare('SELECT id FROM users WHERE rank = ?').get(targetRank);
+      if (existingAtRank) {
+        db.prepare('UPDATE users SET rank = rank + 1 WHERE rank >= ?').run(targetRank);
+      }
 
       const stmt = db.prepare(
         'INSERT INTO users (id, nickname, realname, style, rank, wins, losses) VALUES (?, ?, ?, ?, ?, 0, 0)'
